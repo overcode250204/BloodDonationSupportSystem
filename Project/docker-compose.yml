@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD: "Kh0ngDeD0an!"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1445:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+    networks:
+      - blooddonationsupportsystem-networks
+
+
+  blooddonationsupportsystem:
+    build: ./BloodDonationSupportSystem
+    container_name: springboot-app
+    ports:
+      - "8088:8080"
+    depends_on:
+      - sqlserver
+    networks:
+      - blooddonationsupportsystem-networks
+
+  blooddonationsupportsystemreact:
+    build: ./BloodDonationSupportSystemReact
+    container_name: react-app
+    ports:
+      - "3080:80"
+    depends_on:
+      - blooddonationsupportsystem
+    networks:
+      - blooddonationsupportsystem-networks
+
+
+
+volumes:
+  sql_data:
+  
+networks:
+  blooddonationsupportsystem-networks:
+    driver: bridge
