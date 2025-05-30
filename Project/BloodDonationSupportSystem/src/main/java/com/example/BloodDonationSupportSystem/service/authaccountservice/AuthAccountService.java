@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.Optional;
 
 @Service
 public class AuthAccountService {
@@ -38,8 +39,8 @@ public class AuthAccountService {
         AuthAccountResponse authAccountResponse;
         UserEntity user = new UserEntity();
         user.setPhoneNumber(registerRequest.getPhoneNumber());
-        RoleEntity roleMember = roleRepository.findByRoleName(RoleEnum.ROLE_MEMBER);
-        user.setRole(roleMember);
+        Optional<RoleEntity> roleMember = roleRepository.findByRoleName(RoleEnum.ROLE_MEMBER);
+        user.setRole(roleMember.orElseThrow());
         user.setFullName(registerRequest.getFullName());
         user.setAddress(registerRequest.getAddress());
         user.setDateOfBirth(registerRequest.getDateOfBirth());
@@ -52,14 +53,12 @@ public class AuthAccountService {
 
         String token = jwtService.generateToken(
                 new User(
-                        user.getPhoneNumber(),
+                        String.valueOf(user.getUser_id()),
                         user.getPasswordHash(),
                         user.getAuthorities()
                 )
         );
-        UserProfileDTO userProfileDTO = new UserProfileDTO();
-        userProfileDTO.setPhoneNumber(user.getPhoneNumber());
-        authAccountResponse = new AuthAccountResponse(token, userProfileDTO);
+        authAccountResponse = new AuthAccountResponse(token);
         return authAccountResponse;
     }
 
@@ -69,7 +68,7 @@ public class AuthAccountService {
                 new UsernamePasswordAuthenticationToken(loginRequest.getPhoneNumber(), loginRequest.getPassword()));
         UserEntity user = userRepository.findByPhoneNumber(loginRequest.getPhoneNumber()).orElseThrow();
 
-        String token = jwtService.generateToken(new User(user.getPhoneNumber(), user.getPasswordHash(), Collections.singleton(new SimpleGrantedAuthority(user.getRole().getRoleName().name()))));
+        String token = jwtService.generateToken(new User(String.valueOf(user.getUser_id()), user.getPasswordHash(), Collections.singleton(new SimpleGrantedAuthority(user.getRole().getRoleName().name()))));
         UserProfileDTO userProfileDTO = new UserProfileDTO();
         userProfileDTO.setPhoneNumber(user.getPhoneNumber());
         userProfileDTO.setGender(user.getGender());
@@ -78,13 +77,15 @@ public class AuthAccountService {
         userProfileDTO.setLongitude(user.getLongitude());
         userProfileDTO.setBloodType(user.getBloodType());
         userProfileDTO.setDayOfBirth(user.getDateOfBirth());
-        authAccountResponse = new AuthAccountResponse(token, userProfileDTO);
+        authAccountResponse = new AuthAccountResponse(token);
         return authAccountResponse;
 
 
     }
 
-
+    public UserEntity createUser(UserEntity newUser) {
+        return userRepository.save(newUser);
+    }
 
 
 

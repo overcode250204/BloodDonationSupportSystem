@@ -16,11 +16,11 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Autowired
     private UserRepository userRepository;
     @Override
-    public UserDetails loadUserByUsername(String phoneNumber) throws UsernameNotFoundException {
-        UserEntity user = userRepository.findByPhoneNumber(phoneNumber).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    public UserDetails loadUserByUsername(String userID) throws UsernameNotFoundException {
+        UserEntity user = userRepository.findByPhoneNumber(userID).orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         return new User(
-                user.getPhoneNumber(),
+                String.valueOf(user.getUser_id()),
                 user.getPasswordHash(),
                 user.getAuthorities()
         );

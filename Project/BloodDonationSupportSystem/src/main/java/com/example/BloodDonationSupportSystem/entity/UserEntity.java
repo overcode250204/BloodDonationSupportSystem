@@ -38,7 +38,7 @@ public class UserEntity {
     @Column(name = "avatar")
     private String avatar;
 
-    @Column(name = "full_name")
+    @Column(name = "full_name", columnDefinition = "nvarchar(255)")
     private String fullName;
 
     @Column(name = "address")

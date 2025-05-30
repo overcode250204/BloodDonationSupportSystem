@@ -26,7 +26,7 @@ services:
       - blooddonationsupportsystem-networks
 
   blooddonationsupportsystemreact:
-    build: ./BloodDonationSupportSystemReact
+    build: ./BloodDonationSupportSystem_FE
     container_name: react-app
     ports:
       - "3080:80"

@@ -1,3 +1,5 @@
+
+
 CREATE TABLE role_user (
     role_id INT IDENTITY(1,1) PRIMARY KEY,
     role_name VARCHAR(20) UNIQUE NOT NULL
@@ -14,7 +16,7 @@ CREATE TABLE user_table (
   latitude FLOAT,
   avatar VARCHAR(255),
   date_of_birth DATE,
-  gender VARCHAR(10) NULL,
+  gender VARCHAR(10) CHECK (gender IN ('MALE', 'FEMALE', 'OTHER')),
   blood_type VARCHAR(3) DEFAULT NULL CHECK (blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')), 
   created_at DATETIME DEFAULT GETDATE(),
   updated_at DATETIME DEFAULT GETDATE(),
@@ -55,6 +57,8 @@ CREATE TABLE article (
 	created_at DATETIME DEFAULT GETDATE(),
 	status VARCHAR(10) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PUBLISHED', 'REJECTED')),
 	type_id  UNIQUEIDENTIFIER NOT NULL,
+	created_by_admin_id UNIQUEIDENTIFIER NOT NULL,
+	FOREIGN KEY (created_by_admin_id) REFERENCES user_table(user_id) ON DELETE CASCADE,
 	FOREIGN KEY (type_id) REFERENCES article_type(article_type_id)
 );
 
@@ -73,13 +77,13 @@ CREATE TABLE register_emergency_blood_request (
   description TEXT, 
   blood_type VARCHAR(3) DEFAULT NULL CHECK (blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')), 
   set_time DATETIME,
-  user_id UNIQUEIDENTIFIER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES user_table(user_id)
+  registered_by_staff_id UNIQUEIDENTIFIER NOT NULL,
+  FOREIGN KEY (registered_by_staff_id) REFERENCES user_table(user_id)
 );
 
 CREATE TABLE donation_registration (
     donation_registration_id UNIQUEIDENTIFIER PRIMARY KEY,
-    registration_date TIMESTAMP NOT NULL,        
+    registration_date DATETIME NOT NULL,        
     status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),                  
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
@@ -88,12 +92,13 @@ CREATE TABLE donation_registration (
 );
 
 CREATE TABLE member_screening (
-    member_screening_id UNIQUEIDENTIFIER PRIMARY KEY,
-    screening_date DATETIME NOT NULL,
-    health_status VARCHAR(20) DEFAULT 'PENDING' CHECK (health_status IN ('PASSED', 'FAILED', 'PENDING')) ,                   
-    updated_blood_type VARCHAR(5) NOT NULL,             
-    created_at DATETIME DEFAULT GETDATE(),
-	donation_registration_id UNIQUEIDENTIFIER NOT NULL,
+  member_screening_id UNIQUEIDENTIFIER PRIMARY KEY,
+  screening_date DATETIME NOT NULL,
+  health_status NVARCHAR(20) DEFAULT 'PENDING' CHECK (health_status IN ('PASSED', 'FAILED', 'PENDING')),                   
+  updated_blood_type VARCHAR(5) NOT NULL,             
+  created_at DATETIME DEFAULT GETDATE(),
+  status NVARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SCREENING', 'FAIL')),
+	donation_registration_id UNIQUEIDENTIFIER NOT NULL UNIQUE,
 	screened_by_staff_id UNIQUEIDENTIFIER NOT NULL,
 	FOREIGN KEY (donation_registration_id) REFERENCES donation_registration(donation_registration_id),
 	FOREIGN KEY (screened_by_staff_id) REFERENCES user_table(user_id)
@@ -101,40 +106,46 @@ CREATE TABLE member_screening (
 
 CREATE TABLE blood_donation_process(
   donation_process_id UNIQUEIDENTIFIER PRIMARY KEY,
-  status NVARCHAR(255) DEFAULT 'SCREENING' CHECK (status IN ('SCREENING', 'COLLECTED')),
-  volume_blood_collected INT
+  status NVARCHAR(255) DEFAULT 'SCREENING' CHECK (status IN ('SCREENING', 'COLLECTING', 'FAIL')),
+  volume_blood_collected INT,
+   member_screening_id UNIQUEIDENTIFIER NOT NULL UNIQUE,
+   FOREIGN KEY (member_screening_id) REFERENCES member_screening(member_screening_id)
 );
 
 CREATE TABLE blood_donation_history(
   blood_donation_history_id UNIQUEIDENTIFIER PRIMARY KEY,
   donation_date DATETIME DEFAULT GETDATE(),
   volume_ml INT,
-  donation_process_id UNIQUEIDENTIFIER,
+  donation_process_id UNIQUEIDENTIFIER UNIQUE,
   FOREIGN KEY (donation_process_id) REFERENCES blood_donation_process(donation_process_id)
 );
 
 
-CREATE TABLE blood_component_filtration(
-  blood_component_filtration_id UNIQUEIDENTIFIER PRIMARY KEY, 
-  blood_type VARCHAR(3) NOT NULL CHECK (blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
-  whole_blood INT,
-  plasma INT,
-  platelets INT,
-  red_blood_cells INT,
-  blood_donation_history_id UNIQUEIDENTIFIER,
+CREATE TABLE blood_bag (
+  blood_bag_id UNIQUEIDENTIFIER PRIMARY KEY,  
+  blood_type VARCHAR(3) CHECK (blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
+  volume_ml INT, 
+  status VARCHAR(10) DEFAULT 'STORED' CHECK (status IN ('STORED', 'DIVIDED', 'USED')),
+  blood_donation_history_id UNIQUEIDENTIFIER UNIQUE,
   FOREIGN KEY (blood_donation_history_id) REFERENCES blood_donation_history(blood_donation_history_id)
 );
 
+CREATE TABLE blood_component (
+  blood_component_id UNIQUEIDENTIFIER PRIMARY KEY,
+  component_type VARCHAR(50) CHECK (component_type IN ('PLASMA', 'RED_BLOOD_CELL', 'PLATELETS')), 
+  volume_ml DECIMAL(5, 2), 
+  status VARCHAR(10) DEFAULT 'STORED' CHECK (status IN ('STORED', 'USED')),
+  blood_bag_id UNIQUEIDENTIFIER,
+  FOREIGN KEY (blood_bag_id) REFERENCES blood_bag(blood_bag_id)
+);
+
 CREATE TABLE blood_inventory(
-  blood_inventory_id UNIQUEIDENTIFIER PRIMARY KEY, 
+  blood_inventory_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(), 
   blood_type VARCHAR(3) NOT NULL CHECK (blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
-  whole_blood INT,
-  plasma INT,
-  platelets INT,
-  red_blood_cells INT,
-  total_unit INT,
-  blood_component_filtration_id UNIQUEIDENTIFIER,
-  FOREIGN KEY (blood_component_filtration_id) REFERENCES blood_component_filtration(blood_component_filtration_id)
+  blood_bag_id UNIQUEIDENTIFIER,
+  blood_component_id UNIQUEIDENTIFIER,
+  FOREIGN KEY (blood_bag_id) REFERENCES blood_bag(blood_bag_id),
+  FOREIGN KEY (blood_component_id) REFERENCES blood_component(blood_component_id)
 );
 
 CREATE TABLE external_hospital (

@@ -26,10 +26,13 @@ public class SecurityConfig{
     private JwtAuthenticationFilter jwtAuthenticationFilter;
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
+    @Autowired
+    private CorsConfig corsConfig;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                .cors(cors -> cors.configurationSource(corsConfig.corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
